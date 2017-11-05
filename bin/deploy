@@ -4,7 +4,8 @@ set -o errexit
 
 stack_name=ServerlessImageResize
 region="$(aws configure get region)"
-bucket_name="temp-serverless-resize-$(openssl rand -hex 8)"
+# bucket_name="temp-serverless-resize-$(openssl rand -hex 8)"
+bucket_name="bleecker-assets-copy"
 account_id="$(aws sts get-caller-identity --query Account --output text \
   | xargs echo -n)"
 
@@ -13,7 +14,8 @@ set -o xtrace
 sed -e "s/REGION/${region}/g" -e "s/ACCOUNT_ID/${account_id}/g" \
   api-template.yaml > deploy/api.yaml
 
-aws s3 mb "s3://${bucket_name}"
+
+# aws s3 mb "s3://${bucket_name}"
 
 aws cloudformation package \
   --output-template-file=deploy/output.yaml \
@@ -25,7 +27,7 @@ aws cloudformation deploy \
   --stack-name="${stack_name}" \
   --capabilities=CAPABILITY_NAMED_IAM
 
-aws s3 rb --force "s3://${bucket_name}"
+# aws s3 rb --force "s3://${bucket_name}"
 
 aws cloudformation describe-stacks \
   --stack-name "${stack_name}" \

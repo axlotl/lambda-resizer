@@ -5,31 +5,41 @@ const S3 = new AWS.S3();
 const Sharp = require('sharp');
 
 const BUCKET = process.env.BUCKET;
+
 const URL = process.env.URL;
 
 exports.handler = function(event, context, callback) {
   const key = event.queryStringParameters.key;
-  const match = key.match(/(\d+)x(\d+)\/(.*)/);
-  const width = parseInt(match[1], 10);
-  const height = parseInt(match[2], 10);
-  const originalKey = match[3];
+  const match = key.match(/([^\/]+)\/(\d+)x(\d+)\/(.*)/);
+  const prefix = match[1];
+  const width = parseInt(match[2], 10);
+  const height = parseInt(match[3], 10);
+  const originalKey = prefix + '/' + match[4];
+  console.log('bucket: ' + BUCKET);
+  console.log( 'originalKey: ' + originalKey);
+
+
+
+  const imageType = match[4].split('.').pop();
+  const newKey = prefix + '/' + width + 'x' + height + '.' + imageType;
+  console.log( 'newKey ', newKey);
 
   S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
     .then(data => Sharp(data.Body)
       .resize(width, height)
-      .toFormat('png')
+      .toFormat(imageType)
       .toBuffer()
     )
     .then(buffer => S3.putObject({
         Body: buffer,
         Bucket: BUCKET,
-        ContentType: 'image/png',
-        Key: key,
+        ContentType: 'image/' + imageType,
+        Key: newKey,
       }).promise()
     )
     .then(() => callback(null, {
         statusCode: '301',
-        headers: {'location': `${URL}/${key}`},
+        headers: {'location': `${URL}/${newKey}`},
         body: '',
       })
     )
