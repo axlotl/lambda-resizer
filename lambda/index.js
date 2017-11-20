@@ -7,20 +7,37 @@ const Sharp = require('sharp');
 const BUCKET = process.env.BUCKET;
 
 const URL = process.env.URL;
+function iterate(obj) {
+    for (var property in obj) {
+        if (obj.hasOwnProperty(property)) {
+            if (typeof obj[property] == "object"){
+              console.log( 'ITERATING: ' + property );
+                iterate(obj[property]);
+            } else {
+              console.log('***' + property + "   " + obj[property]);              
+            }
+                
+        }
+    }
+}
 
 exports.handler = function(event, context, callback) {
+
+  // iterate( event );
   const key = event.queryStringParameters.key;
-  const match = key.match(/([^\/]+)\/(\d+)x(\d+)\/(.*)/);
+  console.log( 'KEY: ' + key);
+  const match = key.match(/([a-z0-9\-]+)\/(\d+)?x(\d+)?(.*)/);
   const prefix = match[1];
   const width = parseInt(match[2], 10);
   const height = parseInt(match[3], 10);
-  const originalKey = prefix + '/' + match[4];
+  const extension = match[4];
+  const originalKey = prefix + '/full' + extension;
   console.log('bucket: ' + BUCKET);
   console.log( 'originalKey: ' + originalKey);
 
 
 
-  const imageType = match[4].split('.').pop();
+  const imageType = extension.split('.').pop();
   const newKey = prefix + '/' + width + 'x' + height + '.' + imageType;
   console.log( 'newKey ', newKey);
 
