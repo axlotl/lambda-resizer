@@ -28,8 +28,8 @@ exports.handler = function(event, context, callback) {
   console.log( 'KEY: ' + key);
   const match = key.match(/([a-z0-9\-]+)\/(\d+)?x(\d+)?(.*)/);
   const prefix = match[1];
-  const width = parseInt(match[2], 10);
-  const height = parseInt(match[3], 10);
+  const width = match[2] ? parseInt(match[2], 10) : null;  
+  const height = match[3] ? parseInt(match[3], 10) : null;
   const extension = match[4];
   const originalKey = prefix + '/full' + extension;
   console.log('bucket: ' + BUCKET);
@@ -38,7 +38,8 @@ exports.handler = function(event, context, callback) {
 
 
   const imageType = extension.split('.').pop();
-  const newKey = prefix + '/' + width + 'x' + height + '.' + imageType;
+  
+  const newKey = prefix + '/' + ((width === null) ? '' : width) + 'x' + ((height === null) ? '' : height) + '.' + imageType;
   console.log( 'newKey ', newKey);
 
   S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
