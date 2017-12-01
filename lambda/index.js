@@ -9,18 +9,34 @@ const URL = process.env.URL;
 exports.handler = function(event, context, callback) {
 
   const key = event.queryStringParameters.key;
-  const match = key.match(/([a-z0-9\-]+)\/(\d+)?x(\d+)?(.*)/);
+  // const match = key.match(/[^/]+\/([a-z0-9\-]+)\/(\d+)?x(\d+)?(.*)/);
+  const match = key.match(/[^/]+\/([a-z0-9\-]+)\/(\d+|full)x?(\d+)?(.*)/);
+  console.log( match );
   const prefix = match[1];
-  const width = match[2] ? parseInt(match[2], 10) : null;  
-  const height = match[3] ? parseInt(match[3], 10) : null;
-  const extension = match[4];
+  const extension = match[4];  
+  const imageType = extension.split('.').pop();
+  const contentType = 'image/' + imageType; 
+
+  let newKey = null;
+  let width = null;
+  let height = null;
+
+  //WIDTH NEEDS TO HANDLE 'full' STRING AND NOT RESIZE JUST RESAVE
+  if( match[2] === 'full' ){
+    console.log('inside "full" match');
+    width = null;
+    newKey = 'sized/' + prefix + '/full.' + imageType;  
+  } else {
+    console.log( 'we got dimension(s)');
+    width = match[2] ? parseInt(match[2], 10) : null;  
+    height = match[3] ? parseInt(match[3], 10) : null;
+    newKey = 'sized/' + prefix + '/' + ((width === null) ? '' : width) + 'x' + ((height === null) ? '' : height) + '.' + imageType;  
+  }
+
   const originalKey = prefix + '/full' + extension;
   console.log('bucket: ' + BUCKET);
   console.log( 'originalKey: ' + originalKey);
-  const imageType = extension.split('.').pop();
-  const contentType = 'image/' + imageType; 
   
-  const newKey = prefix + '/' + ((width === null) ? '' : width) + 'x' + ((height === null) ? '' : height) + '.' + imageType;
   console.log( 'newKey ', newKey);
 
   S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
@@ -40,8 +56,11 @@ exports.handler = function(event, context, callback) {
     )
     .then(() => callback(null, {
         statusCode: '301',
-        headers: {'location': `${URL}/${newKey}`},
-        body: '',
+        headers: {
+          'Cache-Control': 'private, max-age=0, no-cache, no-store',
+          'location': `${URL}/${newKey}`
+        },
+        body: ''
       })
     )
     .catch(err => callback(err))
