@@ -5,18 +5,63 @@ const S3 = new AWS.S3();
 const Sharp = require('sharp');
 const BUCKET = process.env.BUCKET;
 const URL = process.env.URL;
+// const imagemin = require('imagemin');
+// const imageminJpegtran = require('imagemin-jpegtran');
+// const imageminPngquant = require('imagemin-pngquant');
 
 exports.handler = function(event, context, callback) {
 
   const key = event.queryStringParameters.key;
+  
   // const match = key.match(/[^/]+\/([a-z0-9\-]+)\/(\d+)?x(\d+)?(.*)/);
-  const match = key.match(/[^/]+\/([a-z0-9\-]+)\/(\d+|full)?x?(\d+)?(.*)/);
+
+  let match;
+  if( key.match(/\/direct-uploads\/) ) {
+    match = key.match( /(\/direct-uploads\/)([a-z0-9\-]+)(.*)/ );
+  } else {
+    match = key.match(/[^\/]+\/([a-z0-9\-]+)\/(\d+|full)?x?(\d+)?(.*)/);
+  }
   console.log( match );
-  const prefix = match[1];
-  const extension = match[4];  
+  
+  let prefix;
+  let extension;
+  let originalKey;
+  let newKey;
+  let width = null;
+  let height = null;
+
+  if( $match[1] === '/direct-uploads/' ){
+    console.log( 'it\'s a direct upload');
+    /*
+    * here, prefix is the original uniqueid()-generated filename
+    */
+    prefix = match[2];
+    extension = match[3];
+    originalKey = 'direct-uploads/' + prefix + extension;
+    newKey = 'direct-uploads/sized/' + originalKey;
+  } else {
+
+    /*
+    * here, prefix is the s3 bucket's "sub-folder"
+    */
+    prefix = match[1];
+    extension = match[4];
+    originalKey = prefix + '/full' + extension;
+
+    //WIDTH NEEDS TO HANDLE 'full' STRING AND NOT RESIZE JUST RESAVE
+    if( match[2] === 'full' ){
+      console.log('inside "full" match');
+      width = null;
+      newKey = 'sized/' + prefix + '/full.' + mediaType;  
+    } else {
+      console.log( 'we got dimension(s)');
+      width = match[2] ? parseInt(match[2], 10) : null;  
+      height = match[3] ? parseInt(match[3], 10) : null;
+      newKey = 'sized/' + prefix + '/' + ((width === null) ? '' : width) + 'x' + ((height === null) ? '' : height) + '.' + mediaType;  
+    }  
+  }
+
   const mediaType = extension.split('.').pop().toLowerCase();
-  let newKey = null;
-  const originalKey = prefix + '/full' + extension;
   let contentType = null;
   let isImage = false;
 
@@ -39,7 +84,7 @@ exports.handler = function(event, context, callback) {
       //BARF LATER
       break;
   }
-
+  
   if(!isImage) {
     newKey = 'sized/' + prefix + '/full.' + mediaType;  
     console.log('inside "video" match', originalKey, newKey);
@@ -66,26 +111,8 @@ exports.handler = function(event, context, callback) {
 
   } else {
 
-    let newKey = null;
-    let width = null;
-    let height = null;
-
-    //WIDTH NEEDS TO HANDLE 'full' STRING AND NOT RESIZE JUST RESAVE
-    if( match[2] === 'full' ){
-      console.log('inside "full" match');
-      width = null;
-      newKey = 'sized/' + prefix + '/full.' + mediaType;  
-    } else {
-      console.log( 'we got dimension(s)');
-      width = match[2] ? parseInt(match[2], 10) : null;  
-      height = match[3] ? parseInt(match[3], 10) : null;
-      newKey = 'sized/' + prefix + '/' + ((width === null) ? '' : width) + 'x' + ((height === null) ? '' : height) + '.' + mediaType;  
-    }
-
-    
     console.log('bucket: ' + BUCKET);
     console.log( 'originalKey: ' + originalKey);
-    
     console.log( 'newKey ', newKey);
 
     S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
@@ -94,6 +121,18 @@ exports.handler = function(event, context, callback) {
         .toFormat(mediaType)
         .toBuffer()
       )
+      /*
+      // image optimization
+      .then( buffer => imagemin( [buffer], null, {
+        plugins : [
+          imageminJpegtran(),
+          imageminPngquant({quality: '65-80'})
+        ]
+      })).then( files => {
+        console.log( 'files: ', files )
+      })*/
+
+
       .then(buffer => S3.putObject({
           Body: buffer,
           Bucket: BUCKET,
