@@ -16,10 +16,10 @@ exports.handler = function(event, context, callback) {
   // const match = key.match(/[^/]+\/([a-z0-9\-]+)\/(\d+)?x(\d+)?(.*)/);
 
   let match;
-  if( key.match(/\/direct-uploads\/) ) {
+  if( key.match(/\/direct-uploads\//) ) {
     match = key.match( /(\/direct-uploads\/)([a-z0-9\-]+)(.*)/ );
   } else {
-    match = key.match(/[^\/]+\/([a-z0-9\-]+)\/(\d+|full)?x?(\d+)?(.*)/);
+    match = key.match(/[^/]+\/([a-z0-9\-]+)\/(\d+|full)?x?(\d+)?(.*)/);
   }
   console.log( match );
   
@@ -27,10 +27,11 @@ exports.handler = function(event, context, callback) {
   let extension;
   let originalKey;
   let newKey;
+  let mediaType;
   let width = null;
   let height = null;
 
-  if( $match[1] === '/direct-uploads/' ){
+  if( match[1] === '/direct-uploads/' ){
     console.log( 'it\'s a direct upload');
     /*
     * here, prefix is the original uniqueid()-generated filename
@@ -38,7 +39,8 @@ exports.handler = function(event, context, callback) {
     prefix = match[2];
     extension = match[3];
     originalKey = 'direct-uploads/' + prefix + extension;
-    newKey = 'direct-uploads/sized/' + originalKey;
+    newKey = 'sized/' + originalKey;
+    mediaType = extension.split('.').pop().toLowerCase();
   } else {
 
     /*
@@ -47,6 +49,7 @@ exports.handler = function(event, context, callback) {
     prefix = match[1];
     extension = match[4];
     originalKey = prefix + '/full' + extension;
+    mediaType = extension.split('.').pop().toLowerCase();
 
     //WIDTH NEEDS TO HANDLE 'full' STRING AND NOT RESIZE JUST RESAVE
     if( match[2] === 'full' ){
@@ -61,7 +64,7 @@ exports.handler = function(event, context, callback) {
     }  
   }
 
-  const mediaType = extension.split('.').pop().toLowerCase();
+  
   let contentType = null;
   let isImage = false;
 
