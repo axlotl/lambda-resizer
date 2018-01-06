@@ -17,11 +17,11 @@ exports.handler = function(event, context, callback) {
 
   let match;
   if( key.match(/\/direct-uploads\//) ) {
-    match = key.match( /(\/direct-uploads\/)([a-z0-9\-]+)(.*)/ );
+    match = key.match( /(\/direct-uploads\/)([a-z0-9\-]+)\/(\d+|full)?x?(\d+)?(.*)/ );
   } else {
     match = key.match(/[^/]+\/([a-z0-9\-]+)\/(\d+|full)?x?(\d+)?(.*)/);
   }
-  console.log( match );
+  console.log( 'MATCH: ' , match );
   
   let prefix;
   let extension;
@@ -37,9 +37,17 @@ exports.handler = function(event, context, callback) {
     * here, prefix is the original uniqueid()-generated filename
     */
     prefix = match[2];
-    extension = match[3];
+    width = match[3] === undefined ? null : parseInt( match[3] );
+    height = match[4] === undefined ? null : parseInt( match[4] );
+    extension = match[5];
     originalKey = 'direct-uploads/' + prefix + extension;
-    newKey = 'sized/' + originalKey;
+    if( width || height ){
+      newKey = 'sized/direct-uploads/' + prefix + '/' + ((width === null) ? '' : width) + 'x' + ((height === null) ? '' : height)  + extension;    
+    } else {
+      width = null;
+      newKey = 'sized/direct-uploads/' + prefix + '/full'  + extension;  
+    }
+    
     mediaType = extension.split('.').pop().toLowerCase();
   } else {
 
@@ -63,6 +71,7 @@ exports.handler = function(event, context, callback) {
       newKey = 'sized/' + prefix + '/' + ((width === null) ? '' : width) + 'x' + ((height === null) ? '' : height) + '.' + mediaType;  
     }  
   }
+
 
   
   let contentType = null;
